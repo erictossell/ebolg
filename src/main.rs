@@ -97,12 +97,11 @@ fn generate_html_footer() -> &'static str {
 }
 
 fn convert_markdown_to_html(
-    file_path: &Path,
+    html_path: &Path, // Changed from file_path to html_path for clarity
     metadata: &Metadata,
     markdown_content: &str,
     prev_post: Option<&Metadata>,
     next_post: Option<&Metadata>,
-    output_dir: &Path, // Add output directory as a parameter
 ) -> Result<(), Box<dyn Error>> {
     let mut options = Options::empty();
     options.insert(Options::ENABLE_TABLES);
@@ -120,13 +119,9 @@ fn convert_markdown_to_html(
     let footer = generate_html_footer();
     let complete_html = format!("{}{}{}", header, styled_html_content, footer);
     println!("HTML content length: {}", complete_html.len());
+    println!("HTML file generated: {:?}", html_path);
 
-    // Save the combined HTML to a new file
-    let new_file_name = file_path.with_extension("html");
-    let new_file_name = output_dir.join(new_file_name.file_name().unwrap());
-    println!("HTML file generated: {:?}", new_file_name);
-
-    if let Err(e) = fs::write(new_file_name, complete_html) {
+    if let Err(e) = fs::write(html_path, complete_html) {
         eprintln!("Failed to write HTML to file: {}", e);
     }
 
@@ -134,37 +129,26 @@ fn convert_markdown_to_html(
 }
 
 fn process_directory(dir_path: &Path, output_dir: &Path) -> Result<(), Box<dyn Error>> {
-    let mut posts: BTreeMap<NaiveDate, (PathBuf, Metadata, String)> = BTreeMap::new();
+    fs::create_dir_all(output_dir)?; // Ensure the output directory exists
 
     for entry in fs::read_dir(dir_path)? {
         let entry = entry?;
         let path = entry.path();
-        println!("Processing file: {:?}", path); // Debugging statement
-        if path.is_file() && path.extension().and_then(std::ffi::OsStr::to_str) == Some("md") {
-            let (metadata, content) = match read_post_metadata(&path) {
-                Ok(data) => data,
-                Err(e) => {
-                    eprintln!("Failed to read metadata from file {:?}: {}", path, e);
-                    continue; // Skip files without valid metadata
-                }
-            };
-            posts.insert(metadata.date, (path, metadata, content));
+
+        if path.is_dir() {
+            // If it's a directory, recursively process it
+            let sub_output_dir = output_dir.join(entry.file_name());
+            process_directory(&path, &sub_output_dir)?;
+        } else if path.is_file() && path.extension().and_then(std::ffi::OsStr::to_str) == Some("md")
+        {
+            // Process Markdown files
+            let (metadata, content) = read_post_metadata(&path)?;
+            let file_stem = path.file_stem().unwrap().to_str().unwrap();
+            let html_file_name = PathBuf::from(format!("{}.html", file_stem));
+            let html_path = output_dir.join(html_file_name);
+
+            convert_markdown_to_html(&html_path, &metadata, &content, None, None)?;
         }
-    }
-
-    let dates: Vec<_> = posts.keys().cloned().collect();
-
-    for (i, date) in dates.iter().enumerate() {
-        let (path, metadata, content) = &posts[date];
-        let prev_post = dates
-            .get(i.wrapping_sub(1))
-            .and_then(|date| posts.get(date).map(|(_, meta, _)| meta));
-        let next_post = dates
-            .get(i + 1)
-            .and_then(|date| posts.get(date).map(|(_, meta, _)| meta));
-
-        // Pass the output directory to convert_markdown_to_html
-        convert_markdown_to_html(path, metadata, content, prev_post, next_post, &output_dir)?;
     }
 
     Ok(())
@@ -174,27 +158,30 @@ fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
         eprintln!("Usage: {} <FILE or DIRECTORY>", args[0]);
-        std::process::exit(1);
+        return Ok(());
     }
+
     let path = Path::new(&args[1]);
-    let output_dir = Path::new("dist");
-    if !output_dir.exists() {
-        fs::create_dir(output_dir)?;
-    }
-    if path.exists() {
-        if path.is_dir() {
-            process_directory(path, output_dir)?;
-        } else if path.is_file() {
-            // Assuming you want to process a single file if it's not a directory
-            let (metadata, content) = read_post_metadata(path)?;
-            convert_markdown_to_html(path, &metadata, &content, None, None, &output_dir)?;
-        } else {
-            eprintln!("The path specified is neither a file nor a directory.");
-            std::process::exit(1);
-        }
+
+    // Check if the path is a file or directory and process accordingly
+    if path.is_dir() {
+        let output_dir = path.parent().unwrap_or_else(|| Path::new("")).join("dist"); // Output directory for processed HTML files
+        process_directory(path, &output_dir)?;
+    } else if path.is_file() {
+        // Process a single file
+        // Determine the output directory based on the file's parent (if available)
+        let output_dir = path.parent().unwrap_or_else(|| Path::new("")).join("dist");
+        fs::create_dir_all(&output_dir)?;
+
+        // Process the individual file
+        let (metadata, content) = read_post_metadata(path)?;
+        let file_stem = path.file_stem().unwrap().to_str().unwrap();
+        let html_file_name = PathBuf::from(format!("{}.html", file_stem));
+        let html_path = output_dir.join(html_file_name);
+
+        convert_markdown_to_html(&html_path, &metadata, &content, None, None)?;
     } else {
-        eprintln!("The path specified does not exist or is not accessible.");
-        std::process::exit(1);
+        eprintln!("The path specified does not exist or is not a file/directory.");
     }
 
     Ok(())
