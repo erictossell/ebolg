@@ -160,15 +160,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         std::process::exit(1);
     }
     let path = Path::new(&args[1]);
-    println!("Attempting to access path: {:?}", path); // Debugging line
 
     if path.exists() {
         if path.is_dir() {
             process_directory(path)?;
         } else if path.is_file() {
             // Assuming you want to process a single file if it's not a directory
-            let (metadata, content) = read_post_metadata(&path)?;
-            convert_markdown_to_html(&path, &metadata, &content, None, None)?;
+            let (metadata, content) = read_post_metadata(path)?;
+            convert_markdown_to_html(path, &metadata, &content, None, None)?;
         } else {
             eprintln!("The path specified is neither a file nor a directory.");
             std::process::exit(1);
