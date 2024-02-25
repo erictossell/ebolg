@@ -11,10 +11,8 @@ struct Metadata {
 }
 
 fn read_post_metadata(file_path: &Path) -> Result<(Metadata, String), Box<dyn Error>> {
-    // Simulate extracting YAML as a string and the remainder of the content
     let content = fs::read_to_string(file_path)?;
 
-    // Assume you have a function to extract YAML string and content correctly
     let (yaml_str, content_str) = extract_yaml_and_content(&content)?;
 
     let metadata: Metadata = serde_yaml::from_str(&yaml_str)?;
@@ -95,7 +93,7 @@ fn generate_html_footer() -> &'static str {
 }
 
 fn convert_markdown_to_html(
-    html_path: &Path, // Changed from file_path to html_path for clarity
+    html_path: &Path,
     metadata: &Metadata,
     markdown_content: &str,
     prev_post: Option<&Metadata>,
@@ -105,14 +103,11 @@ fn convert_markdown_to_html(
     options.insert(Options::ENABLE_TABLES);
     let parser = Parser::new_ext(markdown_content, options);
 
-    // Convert Markdown to HTML
     let mut html_output = String::new();
     html::push_html(&mut html_output, parser);
 
-    // Apply Tailwind CSS classes to the converted HTML
     let styled_html_content = add_tailwind_classes(&html_output);
 
-    // Generate the complete HTML with header, styled content, and footer
     let header = generate_html_header(&metadata.title, prev_post, next_post);
     let footer = generate_html_footer();
     let complete_html = format!("{}{}{}", header, styled_html_content, footer);
@@ -127,20 +122,18 @@ fn convert_markdown_to_html(
 }
 
 fn process_directory(dir_path: &Path, output_dir: &Path) -> Result<(), Box<dyn Error>> {
-    fs::create_dir_all(output_dir)?; // Ensure the output directory exists
+    fs::create_dir_all(output_dir)?;
 
     for entry in fs::read_dir(dir_path)? {
         let entry = entry?;
         let path = entry.path();
 
         if path.is_dir() {
-            // If it's a directory, recursively process it
             let sub_output_dir = output_dir.join(entry.file_name());
             process_directory(&path, &sub_output_dir)?;
         } else {
             match path.extension().and_then(std::ffi::OsStr::to_str) {
                 Some("md") => {
-                    // Process Markdown files
                     let (metadata, content) = read_post_metadata(&path)?;
                     let file_stem = path.file_stem().unwrap().to_str().unwrap();
                     let html_file_name = PathBuf::from(format!("{}.html", file_stem));
@@ -149,7 +142,6 @@ fn process_directory(dir_path: &Path, output_dir: &Path) -> Result<(), Box<dyn E
                     convert_markdown_to_html(&html_path, &metadata, &content, None, None)?;
                 }
                 Some("css") => {
-                    // If the file is a CSS file, copy it as is
                     let target_path = output_dir.join(path.file_name().unwrap());
                     fs::copy(&path, &target_path)?;
                 }
@@ -171,19 +163,15 @@ fn main() -> Result<(), Box<dyn Error>> {
     let source_path = Path::new(&args[1]);
     let output_dir = Path::new(&args[2]);
 
-    // Ensure the output directory exists
     fs::create_dir_all(&output_dir)?;
 
     if source_path.is_dir() {
         process_directory(source_path, &output_dir)?;
     } else if source_path.is_file() {
-        // Process the individual file if it's a markdown file
-        // Assuming you have a function to determine if it's a markdown file and process it
         if source_path.extension().and_then(std::ffi::OsStr::to_str) == Some("md") {
             let file_name = source_path.file_name().unwrap().to_str().unwrap();
             let target_file = output_dir.join(file_name).with_extension("html");
             let (metadata, content) = read_post_metadata(&source_path)?;
-            // Assuming you have a function to convert markdown file to HTML
             convert_markdown_to_html(&target_file, &metadata, &content, None, None)?;
         }
     } else {
