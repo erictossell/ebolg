@@ -68,7 +68,7 @@ fn generate_html_header(
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{title}</title>
-    <link rel="stylesheet" href="../static/tailwind.css">   
+    <link rel="stylesheet" href="/style/tailwind.css">   
 </head>
 <body class="bg-gray-800 text-white">
     <div class="container mx-auto px-4 py-8">
@@ -137,15 +137,24 @@ fn process_directory(dir_path: &Path, output_dir: &Path) -> Result<(), Box<dyn E
             // If it's a directory, recursively process it
             let sub_output_dir = output_dir.join(entry.file_name());
             process_directory(&path, &sub_output_dir)?;
-        } else if path.is_file() && path.extension().and_then(std::ffi::OsStr::to_str) == Some("md")
-        {
-            // Process Markdown files
-            let (metadata, content) = read_post_metadata(&path)?;
-            let file_stem = path.file_stem().unwrap().to_str().unwrap();
-            let html_file_name = PathBuf::from(format!("{}.html", file_stem));
-            let html_path = output_dir.join(html_file_name);
+        } else {
+            match path.extension().and_then(std::ffi::OsStr::to_str) {
+                Some("md") => {
+                    // Process Markdown files
+                    let (metadata, content) = read_post_metadata(&path)?;
+                    let file_stem = path.file_stem().unwrap().to_str().unwrap();
+                    let html_file_name = PathBuf::from(format!("{}.html", file_stem));
+                    let html_path = output_dir.join(html_file_name);
 
-            convert_markdown_to_html(&html_path, &metadata, &content, None, None)?;
+                    convert_markdown_to_html(&html_path, &metadata, &content, None, None)?;
+                }
+                Some("css") => {
+                    // If the file is a CSS file, copy it as is
+                    let target_path = output_dir.join(path.file_name().unwrap());
+                    fs::copy(&path, &target_path)?;
+                }
+                _ => {} // Ignore other file types
+            }
         }
     }
 
@@ -154,32 +163,32 @@ fn process_directory(dir_path: &Path, output_dir: &Path) -> Result<(), Box<dyn E
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
-    if args.len() != 2 {
-        eprintln!("Usage: {} <FILE or DIRECTORY>", args[0]);
+    if args.len() != 3 {
+        eprintln!("Usage: {} <SOURCE> <OUTPUT DIRECTORY>", args[0]);
         return Ok(());
     }
 
-    let path = Path::new(&args[1]);
+    let source_path = Path::new(&args[1]);
+    let output_dir = Path::new(&args[2]);
 
-    // Check if the path is a file or directory and process accordingly
-    if path.is_dir() {
-        let output_dir = path.parent().unwrap_or_else(|| Path::new("")).join("dist"); // Output directory for processed HTML files
-        process_directory(path, &output_dir)?;
-    } else if path.is_file() {
-        // Process a single file
-        // Determine the output directory based on the file's parent (if available)
-        let output_dir = path.parent().unwrap_or_else(|| Path::new("")).join("dist");
-        fs::create_dir_all(&output_dir)?;
+    // Ensure the output directory exists
+    fs::create_dir_all(&output_dir)?;
 
-        // Process the individual file
-        let (metadata, content) = read_post_metadata(path)?;
-        let file_stem = path.file_stem().unwrap().to_str().unwrap();
-        let html_file_name = PathBuf::from(format!("{}.html", file_stem));
-        let html_path = output_dir.join(html_file_name);
-
-        convert_markdown_to_html(&html_path, &metadata, &content, None, None)?;
+    if source_path.is_dir() {
+        process_directory(source_path, &output_dir)?;
+    } else if source_path.is_file() {
+        // Process the individual file if it's a markdown file
+        // Assuming you have a function to determine if it's a markdown file and process it
+        if source_path.extension().and_then(std::ffi::OsStr::to_str) == Some("md") {
+            let file_name = source_path.file_name().unwrap().to_str().unwrap();
+            let target_file = output_dir.join(file_name).with_extension("html");
+            let (metadata, content) = read_post_metadata(&source_path)?;
+            // Assuming you have a function to convert markdown file to HTML
+            convert_markdown_to_html(&target_file, &metadata, &content, None, None)?;
+        }
     } else {
         eprintln!("The path specified does not exist or is not a file/directory.");
+        return Ok(());
     }
 
     Ok(())

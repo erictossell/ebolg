@@ -18,3 +18,6 @@ ebolg .
 ebolg README.md
 ```
 
+```nix
+nix run github:erictossell/ebolg
+```

@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 frontmatter = "0.4.0"
+fs_extra = "1.3.0"
 pulldown-cmark = "0.9.6"
 regex = "1.10.3"
 serde = { version = "1.0", features = ["derive"] }
