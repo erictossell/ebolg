@@ -24,6 +24,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed570934406eb16438a4e976b1b4500774099c13b8cb96eec99f620f05090ddf"
 
 [[package]]
+name = "ebolg"
+version = "0.1.1"
+dependencies = [
+ "frontmatter",
+ "pulldown-cmark",
+ "regex",
+ "serde",
+ "serde_yaml",
+]
+
+[[package]]
 name = "frontmatter"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -68,17 +79,6 @@ name = "memchr"
 version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "523dc4f511e55ab87b694dc30d0f820d60906ef06413f93d4d7a1385599cc149"
-
-[[package]]
-name = "ms-rs-blg"
-version = "0.1.0"
-dependencies = [
- "frontmatter",
- "pulldown-cmark",
- "regex",
- "serde",
- "serde_yaml",
-]
 
 [[package]]
 name = "proc-macro2"
