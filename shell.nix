@@ -7,6 +7,7 @@ pkgs.mkShell {
     rust-analyzer # LSP Server
     rustfmt # Formatter
     clippy # Linter
+    nodejs_21
   ];
 }
 
