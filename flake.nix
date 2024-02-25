@@ -18,10 +18,7 @@
             default = naersk-lib.buildPackage { src = ./.; };
           };
           devShells = {
-            default = with pkgs; mkShell {
-              buildInputs = [ cargo rustc rustfmt pre-commit rustPackages.clippy ];
-              RUST_SRC_PATH = rustPlatform.rustLibSrc;
-            };
+            default = (import ./shell.nix { inherit pkgs; });
           };
         }) // {
       templates = {

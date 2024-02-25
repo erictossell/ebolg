@@ -1,8 +1,6 @@
-use chrono::NaiveDate;
 use pulldown_cmark::{html, Options, Parser};
 use serde::Deserialize;
 use serde_yaml::{self};
-use std::collections::BTreeMap;
 use std::env;
 use std::path::{Path, PathBuf};
 use std::{error::Error, fs};
@@ -10,7 +8,6 @@ use std::{error::Error, fs};
 #[derive(Debug, Deserialize, Clone)]
 struct Metadata {
     title: String,
-    date: NaiveDate,
 }
 
 fn read_post_metadata(file_path: &Path) -> Result<(Metadata, String), Box<dyn Error>> {
@@ -21,6 +18,7 @@ fn read_post_metadata(file_path: &Path) -> Result<(Metadata, String), Box<dyn Er
     let (yaml_str, content_str) = extract_yaml_and_content(&content)?;
 
     let metadata: Metadata = serde_yaml::from_str(&yaml_str)?;
+    println!("\n-------------------");
     println!("Metadata: {:?}", metadata);
     println!("Content snippet: {}", &content[..content.len().min(100)]);
 
@@ -49,7 +47,10 @@ fn add_tailwind_classes(html_content: &str) -> String {
             r#"<pre class="bg-gray-700 text-green-300 p-4 rounded mb-4 overflow-x-auto">"#,
         )
         .replace("<code>", r#"<code class="inline-block">"#)
-    // Ensure to close the tags with the same classes if necessary
+        .replace(
+            "<code class=\"inline-block\">",
+            r#"<code class="inline-block bg-gray-700 text-green-300 p-1 rounded">"#,
+        )
 }
 
 fn generate_html_header(
@@ -67,10 +68,7 @@ fn generate_html_header(
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{title}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        /* Additional styles can be added here if needed */
-    </style>
+    <link rel="stylesheet" href="../static/tailwind.css">   
 </head>
 <body class="bg-gray-800 text-white">
     <div class="container mx-auto px-4 py-8">
